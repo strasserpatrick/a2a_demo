@@ -1,0 +1,45 @@
+[project]
+name = "a2a-langgraph-demo"
+version = "0.1.0"
+description = "A Multi-Agent demo using Google A2A Protocol and LangGraph"
+authors = [
+    { name = "Your Name", email = "you@example.com" }
+]
+dependencies = [
+    "a2a-sdk[http-server]",
+    "langgraph>=0.0.10",
+    "langchain-openai",
+    "openai>=1.0.0",
+    "uvicorn>=0.23.0",
+    "starlette>=0.27.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "ruff>=0.5.0"           # Added Ruff as a dependency
+]
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+# --- Ruff Configuration ---
+[tool.ruff]
+# Target version for the generated code
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+# Enable Pyflakes (F) and pycodestyle (E) codes by default.
+# 'I' enables isort for import sorting (essential for clean agents!)
+# 'B' adds bugbear to find common design flaws
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]  # Ignore line length violations (trust the formatter)
+
+[tool.ruff.format]
+# Standardize on double quotes and spaces
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.setuptools.packages.find]
+where = ["."]
