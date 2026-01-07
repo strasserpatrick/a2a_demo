@@ -8,7 +8,7 @@ A demonstration of the [A2A (Agent-to-Agent) protocol](https://github.com/google
 ┌─────────────────┐     A2A      ┌─────────────────┐     A2A      ┌─────────────────┐
 │ Terminal Client │ ──────────▶  │   Agent A       │ ──────────▶  │   Agent B       │
 │   (Frontend)    │              │   (Manager)     │              │   (HR Expert)   │
-│   port: -       │  ◀──────────  │   port: 8002    │              │   port: 8000    │
+│   port: -       │  ◀─────────  │   port: 8002    │              │   port: 8000    │
 └─────────────────┘              └─────────────────┘              └─────────────────┘
                                          │
                                          │ A2A
