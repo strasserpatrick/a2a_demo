@@ -307,7 +307,7 @@ def start_server():
         name="Manager Agent - Multi-Expert Router",
         description="Routes questions to appropriate experts (Tech or HR) and returns their responses.",
         version="1.0.0",
-        url="http://0.0.0.0:8002",
+        url="http://localhost:8002",
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain"],
         skills=[

@@ -169,7 +169,7 @@ def start_agent_b():
         name="HR & Communication Expert Agent",
         description="Expert in human relations, communication, and interpersonal skills.",
         version="1.0.0",
-        url="http://0.0.0.0:8000",
+        url="http://localhost:8000",
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain"],
         skills=[

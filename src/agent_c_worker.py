@@ -165,7 +165,7 @@ def start_agent_c():
         name="Tech & Code Expert Agent",
         description="Expert in technology, programming, and software development.",
         version="1.0.0",
-        url="http://0.0.0.0:8001",
+        url="http://localhost:8001",
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain"],
         skills=[
