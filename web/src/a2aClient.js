@@ -3,23 +3,22 @@
  * Communicates with A2A agents using the official @a2a-js/sdk
  */
 
-import { Agent } from '@a2a-js/sdk';
+import { A2AClient as A2ASDKClient } from '@a2a-js/sdk/dist/client';
 
 export class A2AClient {
   constructor(serverUrl) {
     this.serverUrl = serverUrl;
-    this.agent = null;
+    this.client = null;
   }
 
   /**
-   * Connect to the A2A agent via proxy
+   * Get or create A2A client
    */
-  async connect() {
-    if (!this.agent) {
-      // Use /api proxy instead of direct connection
-      this.agent = await Agent.connect('/api');
+  async getClient() {
+    if (!this.client) {
+      this.client = new A2ASDKClient({ url: this.serverUrl });
     }
-    return this.agent;
+    return this.client;
   }
 
   /**
@@ -29,33 +28,33 @@ export class A2AClient {
    */
   async sendMessage(message) {
     try {
-      const agent = await this.connect();
+      const client = await this.getClient();
 
       // Send message and collect response
       let response = '';
-      for await (const event of agent.sendMessage({
-        text: message,
-      })) {
-        if (event.type === 'artifact-update') {
-          // Extract text from artifact
-          if (event.artifact?.parts?.[0]?.text) {
-            response = event.artifact.parts[0].text;
-          }
+
+      const stream = client.sendMessage({
+        message: {
+          role: 'user',
+          parts: [{ text: message }],
+          messageId: crypto.randomUUID(),
+        },
+      });
+
+      for await (const event of stream) {
+        // Check for artifact updates containing the response
+        if (event.artifact?.parts?.[0]?.text) {
+          response = event.artifact.parts[0].text;
+        }
+        // Also check result field
+        if (event.result?.artifacts?.[0]?.parts?.[0]?.text) {
+          response = event.result.artifacts[0].parts[0].text;
         }
       }
 
       return response || 'No response received';
     } catch (error) {
       throw new Error(`A2A communication error: ${error.message}`);
-    }
-  }
-
-  /**
-   * Close the connection
-   */
-  async close() {
-    if (this.agent) {
-      await this.agent.close?.();
     }
   }
 }
