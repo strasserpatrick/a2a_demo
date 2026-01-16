@@ -12,11 +12,12 @@ export class A2AClient {
   }
 
   /**
-   * Connect to the A2A agent
+   * Connect to the A2A agent via proxy
    */
   async connect() {
     if (!this.agent) {
-      this.agent = await Agent.connect(this.serverUrl);
+      // Use /api proxy instead of direct connection
+      this.agent = await Agent.connect('/api');
     }
     return this.agent;
   }
