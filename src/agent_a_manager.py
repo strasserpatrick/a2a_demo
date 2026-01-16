@@ -41,23 +41,28 @@ MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4")
 
 ROUTER_SYSTEM_PROMPT = """You are a routing assistant. Your job is to analyze questions and determine which expert should answer them.
 
-You have two experts available:
+You have three experts available:
 1. TECH - Expert in technology, programming, software development, code, databases, cloud, DevOps, AI/ML
 2. HR - Expert in human relations, communication, leadership, team dynamics, conflict resolution, career advice, interpersonal skills
+3. DESIGN - Expert in UI/UX design, user experience, design systems, accessibility, user research, interaction design
 
-Analyze the user's question and respond with ONLY one word: either "TECH" or "HR"
+Analyze the user's question and respond with ONLY one word: either "TECH", "HR", or "DESIGN"
 
 Examples:
 - "How do I implement a REST API?" -> TECH
 - "How do I give constructive feedback to my team?" -> HR
 - "What's the best database for my startup?" -> TECH
 - "How do I negotiate a salary raise?" -> HR
+- "How do I design an accessible button component?" -> DESIGN
+- "What are UX best practices for mobile apps?" -> DESIGN
 - "How is AI changing coding interviews?" -> TECH (because it's primarily about coding/tech)
-- "How do I improve team communication?" -> HR"""
+- "How do I improve team communication?" -> HR
+- "How do I create an effective design system?" -> DESIGN"""
 
 # Worker agent URLs
 AGENT_B_URL = "http://localhost:8000"  # HR Expert
 AGENT_C_URL = "http://localhost:8001"  # Tech Expert
+AGENT_D_URL = "http://localhost:8003"  # Design Expert
 
 # HTTP client with longer timeout for LLM responses
 HTTP_TIMEOUT = httpx.Timeout(timeout=120.0)  # 2 minutes
@@ -67,7 +72,7 @@ HTTP_TIMEOUT = httpx.Timeout(timeout=120.0)  # 2 minutes
 class ManagerState(TypedDict):
     question: str
     conversation_history: list[dict]  # Previous conversation turns
-    routed_to: Literal["TECH", "HR"] | None
+    routed_to: Literal["TECH", "HR", "DESIGN"] | None
     worker_response: str
     final_output: str
 
@@ -117,6 +122,8 @@ async def route_question(state: ManagerState):
         routed_to = "TECH"
     elif "HR" in decision:
         routed_to = "HR"
+    elif "DESIGN" in decision:
+        routed_to = "DESIGN"
     else:
         # Default to TECH if unclear
         routed_to = "TECH"
@@ -193,9 +200,48 @@ async def call_hr_expert(state: ManagerState):
     return {"worker_response": worker_text}
 
 
+async def call_design_expert(state: ManagerState):
+    """Call Agent D (Design Expert) via A2A protocol."""
+    print("[Agent A] Delegating to Agent D (Design Expert)...")
+
+    httpx_client = httpx.AsyncClient(timeout=HTTP_TIMEOUT)
+    config = ClientConfig(httpx_client=httpx_client)
+    a2a_client = await ClientFactory.connect(AGENT_D_URL, client_config=config)
+
+    # Pass question with conversation history to the worker
+    message_text = format_question_with_history(
+        state["question"], state.get("conversation_history", [])
+    )
+
+    message = Message(
+        message_id=uuid4().hex,
+        role=Role.user,
+        parts=[TextPart(type="text", text=message_text)],
+    )
+
+    worker_text = "No result from Design Expert."
+    async for event in a2a_client.send_message(message):
+        if isinstance(event, tuple):
+            task, update = event
+            if task.artifacts:
+                artifact = task.artifacts[0]
+                if artifact.parts:
+                    part = artifact.parts[0].root
+                    if hasattr(part, "text"):
+                        worker_text = part.text
+
+    await a2a_client.close()
+    return {"worker_response": worker_text}
+
+
 def finalize_response(state: ManagerState):
     """Format the final response."""
-    expert = "Tech Expert" if state["routed_to"] == "TECH" else "HR Expert"
+    if state["routed_to"] == "TECH":
+        expert = "Tech Expert"
+    elif state["routed_to"] == "HR":
+        expert = "HR Expert"
+    else:
+        expert = "Design Expert"
     report = f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║  AGENT A - MANAGER RESPONSE                                  ║
@@ -214,8 +260,10 @@ def route_to_expert(state: ManagerState) -> str:
     """Conditional edge: route to the appropriate expert based on the decision."""
     if state["routed_to"] == "TECH":
         return "call_tech_expert"
-    else:
+    elif state["routed_to"] == "HR":
         return "call_hr_expert"
+    else:
+        return "call_design_expert"
 
 
 # --- 4. Build Manager Graph ---
@@ -225,6 +273,7 @@ manager_builder = StateGraph(ManagerState)
 manager_builder.add_node("route", route_question)
 manager_builder.add_node("call_tech_expert", call_tech_expert)
 manager_builder.add_node("call_hr_expert", call_hr_expert)
+manager_builder.add_node("call_design_expert", call_design_expert)
 manager_builder.add_node("finalize", finalize_response)
 
 # Set entry point
@@ -237,12 +286,14 @@ manager_builder.add_conditional_edges(
     {
         "call_tech_expert": "call_tech_expert",
         "call_hr_expert": "call_hr_expert",
+        "call_design_expert": "call_design_expert",
     },
 )
 
-# Both experts lead to finalize
+# All experts lead to finalize
 manager_builder.add_edge("call_tech_expert", "finalize")
 manager_builder.add_edge("call_hr_expert", "finalize")
+manager_builder.add_edge("call_design_expert", "finalize")
 manager_builder.add_edge("finalize", END)
 
 manager_graph = manager_builder.compile()
@@ -305,7 +356,7 @@ class ManagerExecutor(AgentExecutor):
 def start_server():
     card = AgentCard(
         name="Manager Agent - Multi-Expert Router",
-        description="Routes questions to appropriate experts (Tech or HR) and returns their responses.",
+        description="Routes questions to appropriate experts (Tech, HR, or Design) and returns their responses.",
         version="1.0.0",
         url="http://localhost:8002",
         default_input_modes=["text/plain"],
@@ -314,8 +365,8 @@ def start_server():
             AgentSkill(
                 id="multi-expert-router",
                 name="Multi-Expert Router",
-                description="Routes questions to Tech or HR experts based on content",
-                tags=["router", "manager", "tech", "hr"],
+                description="Routes questions to Tech, HR, or Design experts based on content",
+                tags=["router", "manager", "tech", "hr", "design"],
             )
         ],
         capabilities=AgentCapabilities(),
