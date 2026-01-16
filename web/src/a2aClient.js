@@ -16,8 +16,19 @@ export class A2AClient {
    */
   async getClient() {
     if (!this.client) {
-      // Use fromCardUrl to properly initialize the client
-      this.client = await A2ASDKClient.fromCardUrl(this.serverUrl);
+      // Fetch agent card manually through proxy
+      const agentCardUrl = `${this.serverUrl}/.well-known/agent.json`;
+      const response = await fetch(agentCardUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch Agent Card: ${response.status} ${response.statusText}`);
+      }
+      const agentCard = await response.json();
+
+      // Override the URL in the agent card to use our proxy
+      agentCard.url = this.serverUrl;
+
+      // Create client with the agent card directly
+      this.client = new A2ASDKClient(agentCard);
     }
     return this.client;
   }
