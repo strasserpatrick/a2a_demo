@@ -3,7 +3,7 @@
  * Communicates with A2A agents using the official @a2a-js/sdk
  */
 
-import { A2AClient as A2ASDKClient } from '@a2a-js/sdk/dist/client';
+import { A2AClient as A2ASDKClient } from '@a2a-js/sdk/client';
 
 export class A2AClient {
   constructor(serverUrl) {
@@ -14,7 +14,7 @@ export class A2AClient {
   /**
    * Get or create A2A client
    */
-  async getClient() {
+  getClient() {
     if (!this.client) {
       this.client = new A2ASDKClient({ url: this.serverUrl });
     }
@@ -28,7 +28,7 @@ export class A2AClient {
    */
   async sendMessage(message) {
     try {
-      const client = await this.getClient();
+      const client = this.getClient();
 
       // Send message and collect response
       let response = '';
