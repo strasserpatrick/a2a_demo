@@ -1,87 +1,54 @@
 /**
  * A2A Client for React
- * Communicates with A2A agents using the A2A protocol
+ * Communicates with A2A agents using JSON-RPC protocol
  */
 
 export class A2AClient {
   constructor(serverUrl) {
     // Use the Vite proxy instead of direct URL
     this.serverUrl = '/api';
+    this.requestId = 1;
   }
 
   /**
-   * Send a message to an A2A agent and get a response
+   * Send a message to an A2A agent using JSON-RPC
    * @param {string} message - The message to send
-   * @param {Object} options - Additional options
    * @returns {Promise<Object>} - The response from the agent
    */
-  async sendMessage(message, options = {}) {
-    const {
-      timeout = 120000, // 2 minutes default timeout
-    } = options;
-
+  async sendMessage(message) {
     try {
-      // Create a task on the agent
-      const taskResponse = await this.fetchWithTimeout(
-        `${this.serverUrl}/tasks`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: message,
-          }),
+      const payload = {
+        jsonrpc: '2.0',
+        method: 'execute',
+        params: {
+          input: message,
         },
-        timeout
-      );
+        id: this.requestId++,
+      };
 
-      if (!taskResponse.ok) {
-        throw new Error(`Failed to create task: ${taskResponse.status}`);
+      const response = await this.fetchWithTimeout(`${this.serverUrl}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const taskData = await taskResponse.json();
-      const taskId = taskData.task_id;
+      const data = await response.json();
 
-      // Poll for the task result
-      let result = null;
-      const startTime = Date.now();
-
-      while (Date.now() - startTime < timeout) {
-        const statusResponse = await this.fetchWithTimeout(
-          `${this.serverUrl}/tasks/${taskId}`,
-          {
-            method: 'GET',
-          },
-          timeout
-        );
-
-        if (!statusResponse.ok) {
-          throw new Error(
-            `Failed to get task status: ${statusResponse.status}`
-          );
-        }
-
-        const statusData = await statusResponse.json();
-
-        if (statusData.status === 'completed' || statusData.status === 'failed') {
-          result = statusData;
-          break;
-        }
-
-        // Wait a bit before polling again
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      if (data.error) {
+        throw new Error(`A2A error: ${data.error.message}`);
       }
 
-      if (!result) {
-        throw new Error('Task timeout');
+      if (!data.result) {
+        throw new Error('No result in response');
       }
 
-      if (result.status === 'failed') {
-        throw new Error(`Task failed: ${result.error || 'Unknown error'}`);
-      }
-
-      return result;
+      return data.result;
     } catch (error) {
       throw new Error(`A2A communication error: ${error.message}`);
     }
@@ -90,32 +57,13 @@ export class A2AClient {
   /**
    * Fetch with timeout
    */
-  fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+  fetchWithTimeout(url, options = {}, timeoutMs = 180000) {
     return Promise.race([
       fetch(url, options),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
       ),
     ]);
-  }
-
-  /**
-   * Get agent info
-   */
-  async getAgentInfo() {
-    try {
-      const response = await this.fetchWithTimeout(`${this.serverUrl}/`, {
-        method: 'GET',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get agent info: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      throw new Error(`Failed to get agent info: ${error.message}`);
-    }
   }
 }
 
