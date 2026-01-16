@@ -6,6 +6,8 @@ from uuid import uuid4
 
 import httpx
 import uvicorn
+from starlette.routing import Route
+from starlette.responses import JSONResponse
 from a2a.client import ClientFactory
 from a2a.client.client import ClientConfig
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -235,24 +237,59 @@ async def call_design_expert(state: ManagerState):
 
 
 def finalize_response(state: ManagerState):
-    """Format the final response."""
-    if state["routed_to"] == "TECH":
-        expert = "Tech Expert"
-    elif state["routed_to"] == "HR":
-        expert = "HR Expert"
-    else:
-        expert = "Design Expert"
-    report = f"""
-╔══════════════════════════════════════════════════════════════╗
-║  AGENT A - MANAGER RESPONSE                                  ║
-╠══════════════════════════════════════════════════════════════╣
-║  Question routed to: {expert:<40} ║
-╚══════════════════════════════════════════════════════════════╝
+    """Format the final response with routing metadata."""
+    routed_to = state["routed_to"]
 
-{state['worker_response']}
+    # Define agent metadata for visualization
+    agent_info = {
+        "TECH": {
+            "id": "tech",
+            "name": "Tech Expert",
+            "description": "Technology, programming, software development",
+            "url": AGENT_C_URL,
+            "color": "#10b981"
+        },
+        "HR": {
+            "id": "hr",
+            "name": "HR Expert",
+            "description": "Human relations, communication, leadership",
+            "url": AGENT_B_URL,
+            "color": "#8b5cf6"
+        },
+        "DESIGN": {
+            "id": "design",
+            "name": "Design Expert",
+            "description": "UI/UX design, user experience, design systems",
+            "url": AGENT_D_URL,
+            "color": "#f59e0b"
+        }
+    }
 
-───────────────────────────────────────────────────────────────
-"""
+    selected_agent = agent_info.get(routed_to, agent_info["TECH"])
+
+    # Build routing metadata for UI visualization
+    routing_metadata = {
+        "routing": {
+            "from": {
+                "id": "manager",
+                "name": "Manager Agent",
+                "description": "Routes questions to appropriate experts",
+                "url": "http://localhost:8002",
+                "color": "#3b82f6"
+            },
+            "to": selected_agent,
+            "decision": routed_to,
+            "available_agents": list(agent_info.values())
+        }
+    }
+
+    # Include the routing metadata as JSON at the end for parsing
+    routing_json = json.dumps(routing_metadata)
+
+    report = f"""{state['worker_response']}
+
+<!-- ROUTING_METADATA:{routing_json}:END_ROUTING_METADATA -->"""
+
     return {"final_output": report}
 
 
@@ -352,7 +389,65 @@ class ManagerExecutor(AgentExecutor):
         await event_queue.enqueue_event(status_event)
 
 
-# --- 6. Start Agent A as A2A Server on Port 8002 ---
+# --- 6. Agent Topology API ---
+def get_agent_topology():
+    """Return the full agent topology for visualization."""
+    return {
+        "nodes": [
+            {
+                "id": "manager",
+                "type": "manager",
+                "name": "Manager Agent",
+                "description": "Routes questions to appropriate experts",
+                "url": "http://localhost:8002",
+                "color": "#3b82f6",
+                "position": {"x": 250, "y": 50}
+            },
+            {
+                "id": "hr",
+                "type": "worker",
+                "name": "HR Expert",
+                "description": "Human relations, communication, leadership",
+                "url": AGENT_B_URL,
+                "color": "#8b5cf6",
+                "position": {"x": 50, "y": 250}
+            },
+            {
+                "id": "tech",
+                "type": "worker",
+                "name": "Tech Expert",
+                "description": "Technology, programming, software development",
+                "url": AGENT_C_URL,
+                "color": "#10b981",
+                "position": {"x": 250, "y": 250}
+            },
+            {
+                "id": "design",
+                "type": "worker",
+                "name": "Design Expert",
+                "description": "UI/UX design, user experience, design systems",
+                "url": AGENT_D_URL,
+                "color": "#f59e0b",
+                "position": {"x": 450, "y": 250}
+            }
+        ],
+        "edges": [
+            {"id": "e-manager-hr", "source": "manager", "target": "hr", "label": "HR"},
+            {"id": "e-manager-tech", "source": "manager", "target": "tech", "label": "TECH"},
+            {"id": "e-manager-design", "source": "manager", "target": "design", "label": "DESIGN"}
+        ]
+    }
+
+
+async def topology_endpoint(request):
+    """HTTP endpoint to serve agent topology."""
+    return JSONResponse(
+        get_agent_topology(),
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
+
+
+# --- 7. Start Agent A as A2A Server on Port 8002 ---
 def start_server():
     card = AgentCard(
         name="Manager Agent - Multi-Expert Router",
@@ -382,8 +477,17 @@ def start_server():
         http_handler=handler,
     )
 
+    # Build the Starlette app and add custom routes
+    starlette_app = app.build()
+
+    # Add topology endpoint
+    starlette_app.routes.append(
+        Route("/topology", topology_endpoint, methods=["GET"])
+    )
+
     print("[Agent A - Manager] Starting A2A server on port 8002...")
-    uvicorn.run(app.build(), host="0.0.0.0", port=8002)
+    print("[Agent A - Manager] Topology endpoint available at /topology")
+    uvicorn.run(starlette_app, host="0.0.0.0", port=8002)
 
 
 # --- 7. Interactive Chat (local mode) ---

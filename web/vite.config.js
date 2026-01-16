@@ -11,6 +11,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/topology': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
     },
   },
 })

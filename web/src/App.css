@@ -36,6 +36,24 @@ body {
   height: 100vh;
 }
 
+/* App Layout with Graph Panel */
+.app-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-layout .chat-container {
+  flex: 1;
+  min-width: 0;
+  transition: all 0.3s ease;
+}
+
+.app-layout.graph-open .chat-container {
+  flex: 1;
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;
@@ -46,20 +64,55 @@ body {
 .chat-header {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  padding: 1.5rem;
-  text-align: center;
+  padding: 1rem 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 .chat-header h1 {
-  font-size: 1.75rem;
-  margin-bottom: 0.25rem;
+  font-size: 1.5rem;
+  margin-bottom: 0.125rem;
   font-weight: 600;
 }
 
 .chat-header .subtitle {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   opacity: 0.9;
+}
+
+.graph-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.5rem;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.graph-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.graph-toggle-btn.active {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.graph-toggle-btn svg {
+  flex-shrink: 0;
 }
 
 .messages-wrapper {
@@ -168,6 +221,60 @@ body {
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   font-size: 0.75rem;
   opacity: 0.8;
+}
+
+.routing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--badge-color, #3b82f6);
+  background: linear-gradient(135deg, var(--badge-color, #3b82f6) 0%, color-mix(in srgb, var(--badge-color, #3b82f6), #000 20%) 100%);
+  border-radius: 2rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.routing-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.routing-badge-dot {
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+.view-agents-btn {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-agents-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .loading-spinner {
@@ -315,4 +422,246 @@ body {
 
 .messages-wrapper::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* ================================
+   Agent Graph Panel Styles
+   ================================ */
+
+.agent-graph-panel {
+  width: 400px;
+  height: 100vh;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.agent-graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+}
+
+.agent-graph-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.agent-graph-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 0.375rem;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.agent-graph-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.agent-graph-container {
+  flex: 1;
+  min-height: 0;
+  background: #f8fafc;
+}
+
+.agent-graph-loading,
+.agent-graph-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.agent-graph-error {
+  color: var(--error-text);
+}
+
+.agent-graph-error small {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+/* Agent Node Styles */
+.agent-node {
+  position: relative;
+  padding: 0.875rem 1rem;
+  background: white;
+  border: 2px solid var(--node-color);
+  border-radius: 0.75rem;
+  min-width: 160px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.agent-node:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.agent-node.manager {
+  background: linear-gradient(135deg, var(--node-color) 0%, color-mix(in srgb, var(--node-color), #000 15%) 100%);
+  color: white;
+}
+
+.agent-node.worker {
+  background: white;
+}
+
+.agent-node.active {
+  box-shadow: 0 0 0 3px var(--node-color-light), 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.agent-node.selected {
+  box-shadow: 0 0 0 3px var(--primary-light), 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.agent-node-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.agent-node-content {
+  text-align: center;
+}
+
+.agent-node-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.agent-node.worker .agent-node-name {
+  color: var(--text);
+}
+
+.agent-node-desc {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  line-height: 1.3;
+}
+
+.agent-node.worker .agent-node-desc {
+  color: var(--text-secondary);
+}
+
+.agent-node-pulse {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 2px solid white;
+  animation: nodePulse 2s ease-in-out infinite;
+}
+
+@keyframes nodePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+
+.agent-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--primary) !important;
+  border: 2px solid white !important;
+}
+
+/* Routing History */
+.agent-graph-history {
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  background: white;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.agent-graph-history h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.agent-graph-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.routing-history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.routing-history-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.routing-history-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .agent-graph-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100%;
+    z-index: 100;
+  }
+
+  .graph-toggle-btn span {
+    display: none;
+  }
+
+  .header-content {
+    padding: 0 0.5rem;
+  }
 }
