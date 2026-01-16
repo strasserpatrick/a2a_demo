@@ -5,7 +5,8 @@
 
 export class A2AClient {
   constructor(serverUrl) {
-    this.serverUrl = serverUrl;
+    // Use the Vite proxy instead of direct URL
+    this.serverUrl = '/api';
   }
 
   /**
