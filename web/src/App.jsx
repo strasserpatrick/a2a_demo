@@ -26,6 +26,7 @@ function App() {
   const [conversationHistory, setConversationHistory] = useState([])
   const [showGraph, setShowGraph] = useState(false)
   const [activeAgent, setActiveAgent] = useState(null)
+  const [highlightedAgent, setHighlightedAgent] = useState(null)
   const [routingHistory, setRoutingHistory] = useState([])
   const messagesEndRef = useRef(null)
   const a2aClientRef = useRef(new A2AClient('/api'))
@@ -107,7 +108,16 @@ function App() {
     setConversationHistory([])
     setRoutingHistory([])
     setActiveAgent(null)
+    setHighlightedAgent(null)
     setError(null)
+  }
+
+  // Handle clicking on a routing badge - highlight that path in red
+  const handleRoutingBadgeClick = (agentId) => {
+    setShowGraph(true)
+    setHighlightedAgent(agentId)
+    // Clear highlight after 3 seconds
+    setTimeout(() => setHighlightedAgent(null), 3000)
   }
 
   return (
@@ -160,7 +170,7 @@ function App() {
                     <div
                       className="routing-badge"
                       style={{ '--badge-color': msg.routingInfo.to.color }}
-                      onClick={() => setShowGraph(true)}
+                      onClick={() => handleRoutingBadgeClick(msg.routingInfo.to.id)}
                     >
                       <span className="routing-badge-dot" />
                       <span>Routed to {msg.routingInfo.to.name}</span>
@@ -215,8 +225,9 @@ function App() {
 
       <AgentGraph
         isOpen={showGraph}
-        onClose={() => setShowGraph(false)}
+        onClose={() => { setShowGraph(false); setHighlightedAgent(null); }}
         activeAgent={activeAgent}
+        highlightedAgent={highlightedAgent}
         routingHistory={routingHistory}
       />
     </div>

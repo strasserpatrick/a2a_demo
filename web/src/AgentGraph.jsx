@@ -15,10 +15,11 @@ import '@xyflow/react/dist/style.css'
 function AgentNode({ data, selected }) {
   const isManager = data.type === 'manager'
   const isActive = data.isActive
+  const isHighlighted = data.isHighlighted
 
   return (
     <div
-      className={`agent-node ${isManager ? 'manager' : 'worker'} ${isActive ? 'active' : ''} ${selected ? 'selected' : ''}`}
+      className={`agent-node ${isManager ? 'manager' : 'worker'} ${isActive ? 'active' : ''} ${isHighlighted ? 'highlighted' : ''} ${selected ? 'selected' : ''}`}
       style={{
         '--node-color': data.color,
         '--node-color-light': `${data.color}20`,
@@ -52,7 +53,7 @@ const nodeTypes = {
   agent: AgentNode,
 }
 
-export default function AgentGraph({ isOpen, onClose, activeAgent, routingHistory }) {
+export default function AgentGraph({ isOpen, onClose, activeAgent, highlightedAgent, routingHistory }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [loading, setLoading] = useState(true)
@@ -113,35 +114,46 @@ export default function AgentGraph({ isOpen, onClose, activeAgent, routingHistor
 
   // Update active node when routing changes
   useEffect(() => {
-    if (!activeAgent) return
+    const targetAgent = highlightedAgent || activeAgent
+    if (!targetAgent) return
 
     setNodes((nds) =>
       nds.map((node) => ({
         ...node,
         data: {
           ...node.data,
-          isActive: node.id === activeAgent || node.id === 'manager',
+          isActive: node.id === targetAgent || node.id === 'manager',
+          isHighlighted: highlightedAgent && (node.id === highlightedAgent || node.id === 'manager'),
         },
       }))
     )
 
-    // Animate the edge to the active agent
+    // Animate the edge to the active/highlighted agent
+    // Use red for highlighted (clicked badge), blue for active (latest)
+    const isHighlightMode = !!highlightedAgent
     setEdges((eds) =>
-      eds.map((edge) => ({
-        ...edge,
-        animated: edge.target === activeAgent,
-        style: {
-          ...edge.style,
-          stroke: edge.target === activeAgent ? '#3b82f6' : '#94a3b8',
-          strokeWidth: edge.target === activeAgent ? 3 : 2,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: edge.target === activeAgent ? '#3b82f6' : '#94a3b8',
-        },
-      }))
+      eds.map((edge) => {
+        const isTargetEdge = edge.target === targetAgent
+        return {
+          ...edge,
+          animated: isTargetEdge,
+          style: {
+            ...edge.style,
+            stroke: isTargetEdge
+              ? (isHighlightMode ? '#ef4444' : '#3b82f6')
+              : '#94a3b8',
+            strokeWidth: isTargetEdge ? 4 : 2,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: isTargetEdge
+              ? (isHighlightMode ? '#ef4444' : '#3b82f6')
+              : '#94a3b8',
+          },
+        }
+      })
     )
-  }, [activeAgent, setNodes, setEdges])
+  }, [activeAgent, highlightedAgent, setNodes, setEdges])
 
   if (!isOpen) return null
 
