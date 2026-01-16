@@ -9,7 +9,7 @@ function App() {
   const [error, setError] = useState(null)
   const [conversationHistory, setConversationHistory] = useState([])
   const messagesEndRef = useRef(null)
-  const a2aClientRef = useRef(new A2AClient('http://localhost:8002'))
+  const a2aClientRef = useRef(new A2AClient('/api'))
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
