@@ -14,9 +14,10 @@ export class A2AClient {
   /**
    * Get or create A2A client
    */
-  getClient() {
+  async getClient() {
     if (!this.client) {
-      this.client = new A2ASDKClient({ url: this.serverUrl });
+      // Use fromCardUrl to properly initialize the client
+      this.client = await A2ASDKClient.fromCardUrl(this.serverUrl);
     }
     return this.client;
   }
@@ -28,12 +29,10 @@ export class A2AClient {
    */
   async sendMessage(message) {
     try {
-      const client = this.getClient();
+      const client = await this.getClient();
 
-      // Send message and collect response
-      let response = '';
-
-      const stream = client.sendMessage({
+      // Send message and get response
+      const response = await client.sendMessage({
         message: {
           role: 'user',
           parts: [{ text: message }],
@@ -41,18 +40,34 @@ export class A2AClient {
         },
       });
 
-      for await (const event of stream) {
-        // Check for artifact updates containing the response
-        if (event.artifact?.parts?.[0]?.text) {
-          response = event.artifact.parts[0].text;
+      // Extract text from the response
+      let responseText = 'No response received';
+
+      // Response can be a Message or Task
+      if (response.result) {
+        const result = response.result;
+
+        // Check if it's a Task with artifacts
+        if (result.artifacts && result.artifacts.length > 0) {
+          const artifact = result.artifacts[0];
+          if (artifact.parts && artifact.parts.length > 0) {
+            const part = artifact.parts[0];
+            if (part.text) {
+              responseText = part.text;
+            }
+          }
         }
-        // Also check result field
-        if (event.result?.artifacts?.[0]?.parts?.[0]?.text) {
-          response = event.result.artifacts[0].parts[0].text;
+
+        // Check if it's a Message with parts
+        if (result.parts && result.parts.length > 0) {
+          const part = result.parts[0];
+          if (part.text) {
+            responseText = part.text;
+          }
         }
       }
 
-      return response || 'No response received';
+      return responseText;
     } catch (error) {
       throw new Error(`A2A communication error: ${error.message}`);
     }
