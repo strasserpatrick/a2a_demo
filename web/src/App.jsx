@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
+import A2AClient from './a2aClient'
 
 function App() {
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [conversationHistory, setConversationHistory] = useState([])
   const messagesEndRef = useRef(null)
+  const a2aClientRef = useRef(new A2AClient('http://localhost:8002'))
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -27,26 +30,51 @@ function App() {
     setError(null)
 
     try {
-      const response = await fetch('/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: userMessage })
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      // Prepare the message with conversation history for A2A
+      const messagePayload = {
+        current_question: userMessage,
+        conversation_history: conversationHistory
       }
 
-      const data = await response.json()
-      const assistantMessage = data.response || data.result || JSON.stringify(data)
+      // Send message via A2A protocol
+      const result = await a2aClientRef.current.sendMessage(JSON.stringify(messagePayload))
+
+      // Extract the response from the A2A result
+      let assistantMessage = 'No response received'
+      let routing = null
+
+      // Parse the result based on A2A response structure
+      if (result.output) {
+        assistantMessage = result.output
+      } else if (result.artifacts && result.artifacts.length > 0) {
+        const artifact = result.artifacts[0]
+        if (artifact.parts && artifact.parts.length > 0) {
+          const part = artifact.parts[0]
+          if (part.text) {
+            assistantMessage = part.text
+          }
+        }
+      }
+
+      // Try to extract routing info from the response
+      if (assistantMessage.includes('TECH') || assistantMessage.includes('Tech Expert')) {
+        routing = 'TECH'
+      } else if (assistantMessage.includes('HR') || assistantMessage.includes('HR Expert')) {
+        routing = 'HR'
+      }
 
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: assistantMessage,
-        routing: data.routing || data.expert || null
+        routing: routing
       }])
+
+      // Update conversation history
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: assistantMessage }
+      ])
     } catch (err) {
       setError(`Error: ${err.message}`)
       setMessages(prev => [...prev, {
@@ -60,6 +88,7 @@ function App() {
 
   const clearHistory = () => {
     setMessages([])
+    setConversationHistory([])
     setError(null)
   }
 
