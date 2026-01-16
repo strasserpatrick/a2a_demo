@@ -1,69 +1,61 @@
 /**
  * A2A Client for React
- * Communicates with A2A agents using JSON-RPC protocol
+ * Communicates with A2A agents using the official @a2a-js/sdk
  */
+
+import { Agent } from '@a2a-js/sdk';
 
 export class A2AClient {
   constructor(serverUrl) {
-    // Use the Vite proxy instead of direct URL
-    this.serverUrl = '/api';
-    this.requestId = 1;
+    this.serverUrl = serverUrl;
+    this.agent = null;
   }
 
   /**
-   * Send a message to an A2A agent using JSON-RPC
+   * Connect to the A2A agent
+   */
+  async connect() {
+    if (!this.agent) {
+      this.agent = await Agent.connect(this.serverUrl);
+    }
+    return this.agent;
+  }
+
+  /**
+   * Send a message to an A2A agent
    * @param {string} message - The message to send
-   * @returns {Promise<Object>} - The response from the agent
+   * @returns {Promise<string>} - The response from the agent
    */
   async sendMessage(message) {
     try {
-      const payload = {
-        jsonrpc: '2.0',
-        method: 'execute',
-        params: {
-          input: message,
-        },
-        id: this.requestId++,
-      };
+      const agent = await this.connect();
 
-      const response = await this.fetchWithTimeout(`${this.serverUrl}/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Send message and collect response
+      let response = '';
+      for await (const event of agent.sendMessage({
+        text: message,
+      })) {
+        if (event.type === 'artifact-update') {
+          // Extract text from artifact
+          if (event.artifact?.parts?.[0]?.text) {
+            response = event.artifact.parts[0].text;
+          }
+        }
       }
 
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(`A2A error: ${data.error.message}`);
-      }
-
-      if (!data.result) {
-        throw new Error('No result in response');
-      }
-
-      return data.result;
+      return response || 'No response received';
     } catch (error) {
       throw new Error(`A2A communication error: ${error.message}`);
     }
   }
 
   /**
-   * Fetch with timeout
+   * Close the connection
    */
-  fetchWithTimeout(url, options = {}, timeoutMs = 180000) {
-    return Promise.race([
-      fetch(url, options),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-      ),
-    ]);
+  async close() {
+    if (this.agent) {
+      await this.agent.close?.();
+    }
   }
 }
 

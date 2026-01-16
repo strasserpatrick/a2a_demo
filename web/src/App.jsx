@@ -37,26 +37,10 @@ function App() {
       }
 
       // Send message via A2A protocol
-      const result = await a2aClientRef.current.sendMessage(JSON.stringify(messagePayload))
-
-      // Extract the response from the A2A result
-      let assistantMessage = 'No response received'
-      let routing = null
-
-      // Parse the result based on A2A response structure
-      if (result.output) {
-        assistantMessage = result.output
-      } else if (result.artifacts && result.artifacts.length > 0) {
-        const artifact = result.artifacts[0]
-        if (artifact.parts && artifact.parts.length > 0) {
-          const part = artifact.parts[0]
-          if (part.text) {
-            assistantMessage = part.text
-          }
-        }
-      }
+      const assistantMessage = await a2aClientRef.current.sendMessage(JSON.stringify(messagePayload))
 
       // Try to extract routing info from the response
+      let routing = null
       if (assistantMessage.includes('TECH') || assistantMessage.includes('Tech Expert')) {
         routing = 'TECH'
       } else if (assistantMessage.includes('HR') || assistantMessage.includes('HR Expert')) {
