@@ -27,7 +27,7 @@ function App() {
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:8002/query', {
+      const response = await fetch('/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
